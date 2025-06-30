@@ -4,6 +4,7 @@ const path = require('path');
 const utils = require(path.join(__dirname,'..','utils/usersDB.js'));
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const authMiddleware = require (path.join(__dirname,'..','middleware/authMW.js'));
 
 router.post ('/register', async(req , res )=>{
     try{
@@ -41,7 +42,7 @@ router.post('/login',async(req , res)=>{
         }
 
         //search for the user in the database
-        const Infos = await utils.FindUser(username);
+        const Infos = await utils.SearchBy("username" , username);
     
         // found the user and the search is succesfull
         if(Infos.safe && Infos.state){
@@ -88,5 +89,44 @@ router.post('/login',async(req , res)=>{
 // the JWT_SECREt is like auther password i need to make a sup file .env.example 
 //the to make ppl taste the server 
 //#endregion
+
+// the router have a middleware so you must provide a token for it to work 
+router.delete('/profile/delete_acc',authMiddleware, async(req,res)=>{
+    try {
+        //first take the password from the user
+        const givenPassword = req.body.password;
+        
+        //check if the password is provided
+        if(!givenPassword){
+            return res.status(400).send("Password is required");
+        }
+        
+        //find the user to get the password
+        const info = await utils.SearchBy('id',req.user.id);
+
+        if (info.safe && info.state) {
+            //found him now compare the passwords
+            const allowed = await utils.VerifyThePassword(givenPassword,info.user.password);
+            if(allowed){
+                //its him delete the account 
+                    await utils.DeleteUserById(req.user.id);
+                    return res.status(200).send("WE WILL MISS YOU ......");
+            }else{
+                //password are wrong not him 
+                return res.status(401).send("Wrong Password!!!!")
+            }
+        }else if (!info.safe){
+            //the search function had a proplem
+            return res.status(500).send(info.message)
+        }else{
+            // didn't find him while searching
+            return res.status(404).send("User not found — maybe already deleted");
+        }
+    } catch (error) {
+        console.log("Proplem in the deleting server",error.message)
+        return res.status(500).send("The server encouterd a proplem")
+    }
+
+})
 
 module.exports= router;

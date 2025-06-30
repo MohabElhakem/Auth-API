@@ -48,10 +48,20 @@ async function NewUser (UserName, Password){
 //We use this to safely reach the users.json file from the utils folder.
 //#endregion
 
-async function FindUser (userToBeFound){
+async function SearchBy ( key , value ){
     try {
         const users = await ReadData(path.join(__dirname,'..','users.json'));
-        const userInfo = users.find(u=>u.username.toLowerCase()===userToBeFound.toLowerCase());
+        const userInfo = users.find(u=>{
+            //start of the find inner function
+            // Case-insensitive match for strings
+            const field = u[key];
+            if(typeof field === "string" && typeof value === "string"){
+                return field.toLowerCase() === value.toLowerCase()
+            }else{
+                return field === value
+            }
+            //end of find inner function
+        });
         if (userInfo ) {
             return{
                 state : true,
@@ -91,6 +101,16 @@ function VerifyThePassword (userPassworedToCheck,saltpassword){
 //it returns true or false so its safe to use
 //#endregion
     
-    
+async function DeleteUserById(idToDelete) {
+  try {
+      const users = await ReadData(path.join(__dirname,'..','users.json'));
+      const updatedUsers = users.filter(u=> u.id !== idToDelete);
+      await fs.writeFile(path.join(__dirname,'..','users.json'),JSON.stringify(updatedUsers,null,2),"utf-8");
+      return true;
+  } catch (error) {
+    console.log ("couldin't delete the user",error.message);
+    return false;
+  }
+}
 
-module.exports = {ReadData , NewUser, FindUser , VerifyThePassword }
+module.exports = {ReadData , NewUser, SearchBy , VerifyThePassword ,DeleteUserById }
