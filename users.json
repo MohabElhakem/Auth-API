@@ -1,3 +1,8 @@
 [
-
+  {
+    "username": "mohab",
+    "password": "$2b$10$1pfPX0g8IxNV/8cf9TW1NulvWKbryvIrc.yeBz8B/MdrltMfrVj9K",
+    "id": "916f4ea8-d02f-404f-a482-9275c2ceeb8f",
+    "role": "user"
+  }
 ]

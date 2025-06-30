@@ -14,4 +14,4 @@ app.use('/auth',authRouter);
 app.listen(3000,()=>{
     console.log('Server running on http://localhost:3000');
 });
-//Start the server on port 3000
+//Start the server on port 3000g

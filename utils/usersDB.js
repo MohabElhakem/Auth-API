@@ -1,7 +1,8 @@
 
 const fs = require ('fs').promises;
 const bcrypt = require ('bcrypt');
-const path = require('path')
+const path = require('path');
+const {v4:uuidv4} = require('uuid');
 
 async function ReadData (path){
     try {
@@ -21,7 +22,7 @@ async function ReadData (path){
 async function NewUser (UserName, Password){
     try{
         const SafePassword = await bcrypt.hash(Password,10);
-        const User = { Username : UserName , Password : SafePassword};
+        const User = { username : UserName , password : SafePassword , id : uuidv4(), role : "user"};
         const filePath = path.join(__dirname,'..','users.json');
         const UserArr = await ReadData (filePath);
         UserArr.push(User); 
@@ -47,6 +48,49 @@ async function NewUser (UserName, Password){
 //We use this to safely reach the users.json file from the utils folder.
 //#endregion
 
+async function FindUser (userToBeFound){
+    try {
+        const users = await ReadData(path.join(__dirname,'..','users.json'));
+        const userInfo = users.find(u=>u.username.toLowerCase()===userToBeFound.toLowerCase());
+        if (userInfo ) {
+            return{
+                state : true,
+                user : userInfo,
+                safe : true,
+                message : "User Found Successfully"
+            } 
+        }else{
+            return{
+                state : false,
+                user : null,
+                safe : true,
+                message : "User not found"
+           }
+        }
+    } catch (error) {
+       return {
+        state : false,
+        user: null,
+        safe: false,
+        message: "A porblem has been occurred\t"+error.message
+       }
+    };
+}
+//#region 
+//you returning an object of values to use all of them if needed 
+// the state for conditioning and user to deal with
+//safe is to check is it okay to make the user if not found
+//but dont make the user if a proplem occurred
+//#endregion
 
+function VerifyThePassword (userPassworedToCheck,saltpassword){
+    return bcrypt.compare(userPassworedToCheck,saltpassword);
+}
+//#region 
+//The function returns a promise so alwyas make sure you use await with it 
+//it returns true or false so its safe to use
+//#endregion
+    
+    
 
-module.exports = {ReadData , NewUser}
+module.exports = {ReadData , NewUser, FindUser , VerifyThePassword }
