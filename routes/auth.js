@@ -4,8 +4,10 @@ const path = require('path');
 const utils = require(path.join(__dirname,'..','utils/usersDB.js'));
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const authMiddleware = require (path.join(__dirname,'..','middleware/authMW.js'));
+const {authMiddleware,blacklistedtokens} = require (path.join(__dirname,'..','middleware/authMW.js'));
 
+
+//REGISTER ROUTE
 router.post ('/register', async(req , res )=>{
     try{
         const { username , password } = req.body ;
@@ -33,6 +35,8 @@ router.post ('/register', async(req , res )=>{
 // after the middleware it is in a js structure
 //#endregion
 
+
+//LOGIN ROUTE
 router.post('/login',async(req , res)=>{
     try {
         const {username , password} = req.body;
@@ -90,6 +94,7 @@ router.post('/login',async(req , res)=>{
 //the to make ppl taste the server 
 //#endregion
 
+//DELETE ROUTE
 // the router have a middleware so you must provide a token for it to work 
 router.delete('/profile/delete_acc',authMiddleware, async(req,res)=>{
     try {
@@ -108,7 +113,8 @@ router.delete('/profile/delete_acc',authMiddleware, async(req,res)=>{
             //found him now compare the passwords
             const allowed = await utils.VerifyThePassword(givenPassword,info.user.password);
             if(allowed){
-                //its him delete the account 
+                //its him delete the account and token as well 
+                    blacklistedtokens.add(req.token);
                     await utils.DeleteUserById(req.user.id);
                     return res.status(200).send("WE WILL MISS YOU ......");
             }else{
@@ -129,4 +135,66 @@ router.delete('/profile/delete_acc',authMiddleware, async(req,res)=>{
 
 })
 
+
+//PROFILE ROUTE
+router.get("/profile",authMiddleware,async(req,res)=>{
+    try {
+        const search = await utils.SearchBy("id",req.user.id);
+        if (search.safe && search.state){
+            return res.status(200).json(search.user);
+        }else if (search.safe && !search.state){
+            return res.status(404).send("We don't have that user.......")
+        }
+        return res.status(400).send("Invalid user search result.");
+    } catch (error) {
+        console.log("Error geting the user profile",error.massege);
+        return res.status(500).send("Error in profile router")
+    }
+})
+
+//LOGOUT ROUTE
+router.post("/profile/logout",authMiddleware,async(req,res)=>{
+    try {
+        //first take the password from the user
+            const givenPassword = req.body.password;
+            
+            //check if the password is provided
+            if(!givenPassword || !req.token){
+                return res.status(400).send("Password and token are required");
+            }
+            
+            //find the user to get the password
+            const info = await utils.SearchBy('id',req.user.id);
+    
+            
+            if(info.safe && info.state){
+                // we found the user make sure its him 
+                const logout = await utils.VerifyThePassword(givenPassword,info.user.password);
+                if(logout){
+                    blacklistedtokens.add(req.token);
+                    console.log(blacklistedtokens);
+                    return res.status(200).send("Logged out successfully");
+                }else{
+                    return res.status(401).send("Wrong Password!!");
+                }
+            }else if (info.safe && !info.state){
+                // user is not found in the database
+                return res.status(404).send("User not found\nSign in First");
+            }else {
+                // somthing happend while reading the user infos
+                return res.status(500).send(info.message)
+            }
+    } catch (error) {
+         // server error while loging out
+        console.error("Login error:", error.message);
+        return res.status(500).send(error.message);
+    }
+
+})
+
+//#region 
+//the logout uses a set instance to keep trak of thoken that blacklisted
+//if it is it deny the acces to the route 
+// in the future you will use somthing like mongoDB to deall with all of that
+//#endregion
 module.exports= router;

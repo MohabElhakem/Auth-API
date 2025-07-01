@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const blacklistedtokens = new Set();
 
 function authMiddleware (req , res ,next){
     // when some one go to the middelware look at the request header for somthing under authorization
@@ -12,17 +13,23 @@ function authMiddleware (req , res ,next){
     //take the real key (token) 
     const token = authHeader.split(" ")[1];
 
+    //check if the token black listed
+    if(blacklistedtokens.has(token)){
+        return res.status(403).send("Token is blacklisted")
+    }
+
     //check if the key is valied
     try {
         const decode = jwt.verify(token,process.env.JWT_SECRET);
         req.user = decode; // attach the user data to the request
+        req.token = token; // attach the token to the request 
         next() //Pass control to the next middleware or route handler
     } catch (error) {
         return res.status(401).json({ message: "Invalid or expired token" });
     }
 }
 
-module.exports = authMiddleware;
+module.exports = {authMiddleware,blacklistedtokens};
 
 /**
  * Auth Middleware Story:
